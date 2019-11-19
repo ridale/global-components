@@ -10,6 +10,8 @@
  * @TAG(DATA61_BSD)
  */
 
+#include <plat/pci_devices.h>
+
 import <PCIConfig.idl4>;
 import <PutChar.idl4>;
 
@@ -41,3 +43,19 @@ component PCIConfigIO {
         poh.pci_config_data_attributes <- pci_config_data_attributes;
     }
 }
+
+/* This is a macro used to define the hardware CAmkES component for each ARM platform */
+HARDWARE_PCI_COMPONENT
+
+component PCIdriverARMPlat {
+
+    HARDWARE_PCI_INTERFACES
+
+    composition {
+        HARDWARE_PCI_COMPOSITION
+    }
+
+    configuration {
+        HARDWARE_PCI_CONFIG
+    }
+};
