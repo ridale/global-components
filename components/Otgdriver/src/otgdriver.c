@@ -1,0 +1,149 @@
+/*
+ * Copyright 2019, Data61
+ * Commonwealth Scientific and Industrial Research Organisation (CSIRO)
+ * ABN 41 687 119 230.
+ *
+ * This software may be distributed and modified according to the terms of
+ * the GNU General Public License version 2. Note that NO WARRANTY is provided.
+ * See "LICENSE_GPLv2.txt" for details.
+ *
+ * @TAG(DATA61_GPL)
+ */
+
+#define ZF_LOG_LEVEL ZF_LOG_DEBUG
+
+#include <autoconf.h>
+
+#include <camkes.h>
+#include <camkes/dma.h>
+#include <camkes/io.h>
+#include <camkes/irq.h>
+
+#include <usb/otg.h>
+
+#include <platsupport/io.h>
+#include <platsupport/irq.h>
+#include <vka/vka.h>
+#include <simple/simple.h>
+#include <simple/simple_helpers.h>
+#include <allocman/allocman.h>
+#include <allocman/bootstrap.h>
+#include <allocman/vka.h>
+#include <sel4utils/vspace.h>
+#include <sel4utils/sel4_zf_logif.h>
+
+static usb_otg_t otg = {0};
+static ps_io_ops_t io_ops = {0};
+
+#define MAX_USB_HOST_IRQS  10
+
+static ps_irq_t irq_info[MAX_USB_HOST_IRQS];
+static ps_irq_ops_t irq_ops;
+static int nirqs = 0;
+
+
+void pre_init(void)
+{
+    ZF_LOGW("pre_init");
+}
+
+static void *malloc_dma_alloc(void *cookie, size_t size, int align, int cached, ps_mem_flags_t flags)
+{
+    //assert(cached); // stubbed as ps_dma_alloc_pinned() calls in USB driver are all uncached..?
+    int error;
+    void *ret = malloc(size);
+    if (ret == NULL) {
+        ZF_LOGE("ERR: Failed to allocate %d\n", size);
+        return NULL;
+    }
+    return ret;
+}
+
+static void malloc_dma_free(void *cookie, void *addr, size_t size)
+{
+    free(addr);
+}
+
+static uintptr_t malloc_dma_pin(void *cookie, void *addr, size_t size)
+{
+    return (uintptr_t)addr;
+}
+
+static void malloc_dma_unpin(void *cookie, void *addr, size_t size)
+{
+}
+
+static void malloc_dma_cache_op(void *cookie, void *addr, size_t size, dma_cache_op_t op)
+{
+}
+
+static void otg_irq_handle(void *data, ps_irq_acknowledge_fn_t acknowledge_fn, void *ack_data)
+{
+    ZF_LOGW("got an irq");
+    int error = 0;
+    //error = usbdriver_lock();
+    if (0 == error) {
+        otg_handle_irq(otg);
+        //(void)usbdriver_unlock();
+    }
+    ZF_LOGW("irq finished");
+}
+
+void post_init(void)
+{
+    int error = 0;
+    error = otgdriver_lock();
+    ZF_LOGW("post_init");
+
+    ZF_LOGW("before camkes_io_ops");
+    error = camkes_io_ops(&io_ops);
+    ZF_LOGF_IF(error, "Failed to initialise IO ops");
+    io_ops.dma_manager = (ps_dma_man_t) {
+        .cookie = NULL,
+        .dma_alloc_fn = malloc_dma_alloc,
+        .dma_free_fn = malloc_dma_free,
+        .dma_pin_fn = malloc_dma_pin,
+        .dma_unpin_fn = malloc_dma_unpin,
+        .dma_cache_op_fn = malloc_dma_cache_op
+    };
+    
+    ZF_LOGW("before camkes_irq_ops");
+    error = camkes_irq_ops(&irq_ops);
+    ZF_LOGF_IF(error, "Failed to initialise IRQ ops");
+
+    ZF_LOGW("before usb_host_irqs");
+    usb_host_t otg_host = {.id = USB_OTG_DEFAULT};
+    const int* irqs = usb_host_irqs(&otg_host, &nirqs);
+    ZF_LOGF_IF((NULL == irqs), "Failed to initialise IRQ ops");
+    ZF_LOGF_IF((0 == nirqs), "No IRQs mapped");
+
+    for (int i=0; i < nirqs && i < MAX_USB_HOST_IRQS; i++) {
+        irq_info[i]  = (ps_irq_t) {
+            .type = PS_INTERRUPT, 
+            .irq = { .number = irqs[i] }
+        };
+        ZF_LOGD("IRQ %d: %d", i, irqs[i]);
+        irq_id_t irq_id = ps_irq_register(&irq_ops, irq_info[i], otg_irq_handle, &irq_info[i]);
+        if (irq_id < 0) {
+            ZF_LOGF_IF(error, "Failed to initialise OTG interrupt");
+            break;
+        } else {
+            ZF_LOGW("registered irq %d", irq_info[i].irq.number);
+        }
+    }
+    ZF_LOGW("before usb_init");
+    error = usb_otg_init(USB_OTG_DEFAULT, &otg, io_ops);
+    ZF_LOGF_IF(error, "Failed to initialise USB host");
+
+    ZF_LOGW("post_init done");
+
+    error = otgdriver_unlock();
+}
+
+int run()
+{
+    const char *name = get_instance_name();
+    printf("%s: Started\n", name);
+
+    return 0;
+}
