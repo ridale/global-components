@@ -26,6 +26,9 @@ DeclareCAmkESComponent(
     OtgdriverARMPlat
     SOURCES
     src/otgdriver.c
+    src/plat/${KernelPlatform}/plat.c
+    src/plat/${KernelPlatform}/uboot/mx6qsabrelite.c
+    src/plat/${KernelPlatform}/uboot/mxc_gpio.c
     INCLUDES
     include
     LIBS

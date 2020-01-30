@@ -15,6 +15,7 @@
 
 #define HARDWARE_OTG_INTERFACES     \
     consumes Dummy OtgDriver;       \
+    consumes Dummy OtgMisc;         \
     consumes Dummy iomux;           \
     consumes Dummy UsbPhy;          \
     consumes Dummy uccm;            \
@@ -25,6 +26,7 @@
 
 #define HARDWARE_OTG_COMPOSITION                                               \
     connection seL4DTBHardware iomux_conn(from dummy_source, to iomux);        \
+    connection seL4DTBHardware otgmisc_conn(from dummy_source, to OtgMisc);    \
     connection seL4DTBHardware uccm_conn(from dummy_source, to uccm);          \
     connection seL4DTBHardware phy_conn(from dummy_source, to UsbPhy);         \
     connection seL4DTBHardware uanalog_conn(from dummy_source, to uanalog);    \
@@ -34,6 +36,7 @@
 
 #define HARDWARE_OTG_CONFIG                                                    \
     OtgDriver.dtb = dtb({ "path" : "/soc/aips-bus@2100000/usb@2184000" });     \
+    OtgMisc.dtb = dtb({ "path" : "/soc/aips-bus@2100000/usbmisc@2184800" });   \
     iomux.dtb = dtb({ "path" : "/soc/aips-bus@2000000/iomuxc@20e0000" });      \
     UsbPhy.dtb = dtb({ "path" : "/soc/aips-bus@2000000/usbphy@20c9000" });     \
     uccm.dtb = dtb({ "path" : "/soc/aips-bus@2000000/ccm@20c4000" });          \

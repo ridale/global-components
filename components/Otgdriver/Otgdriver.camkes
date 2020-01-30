@@ -19,7 +19,9 @@ HARDWARE_OTG_COMPONENT
 
 component OtgdriverARMPlat {
     has mutex otgdriver;
-    control;
+
+    //DEBUG LINE BELOW REMOVE
+    //control;
 
     HARDWARE_OTG_INTERFACES
 
