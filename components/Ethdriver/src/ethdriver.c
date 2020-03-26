@@ -11,6 +11,7 @@
  */
 
 #include <autoconf.h>
+#include <stdbool.h>
 
 #include <camkes.h>
 #include <camkes/dma.h>
@@ -58,6 +59,11 @@ static ps_irq_ops_t irq_ops;
 
 void camkes_make_simple(simple_t *simple);
 
+/*
+ *Struct eth_buf contains a virtual address (buf) to use for memory operations
+ *at the picoserver level and a physical address to be passed down to the
+ *driver.
+ */
 typedef struct eth_buf {
     void *buf;
     uintptr_t phys;
@@ -133,6 +139,7 @@ unsigned int client_get_sender_id(void);
 unsigned int client_num_badges(void);
 unsigned int client_enumerate_badge(unsigned int i);
 void *client_buf(unsigned int client_id);
+bool client_has_mac(unsigned int client_id);
 void client_get_mac(unsigned int client_id, uint8_t *mac);
 
 static void init_system(void)
@@ -379,15 +386,20 @@ int client_tx(int len)
     if (client->num_tx != 0) {
         client->num_tx --;
         tx_frame_t *tx_buf = client->pending_tx[client->num_tx];
+
         /* copy the packet over */
         memcpy(tx_buf->buf.buf, packet, len);
-        // TODO Find out why ARM memcpy faults on unaligned addresses
-        //memcpy(tx_buf->buf.buf + 6, client->mac, 6);
+
+        /* On ARM memory mapped as uncached does not support unaligned access, copy it in manually.
+         * For more information read compiler flags -munaligned-access -mno-unaligned-access.
+         */
         for (int i = 0; i < 6; i++) {
             ((char *)(tx_buf->buf.buf + 6))[i] = ((char *)client->mac)[i];
         }
+
         /* queue up transmit */
-        err = eth_driver.i_fn.raw_tx(&eth_driver, 1, (uintptr_t *) & (tx_buf->buf.phys), (unsigned int *)&len, tx_buf);
+        err = eth_driver.i_fn.raw_tx(&eth_driver, 1, (uintptr_t *) & (tx_buf->buf.phys),
+                                     (unsigned int *)&len, tx_buf);
         if (err != ETHIF_TX_ENQUEUED) {
             /* Free the internal tx buffer in case tx fails. Up to the client to retry the trasmission */
             client->num_tx++;
@@ -487,7 +499,6 @@ void post_init(void)
         clients[client].should_notify = 1;
         clients[client].client_id = client_enumerate_badge(client);
         clients[client].dataport = client_buf(clients[client].client_id);
-        client_get_mac(clients[client].client_id, clients[client].mac);
         for (int i = 0; i < CLIENT_TX_BUFS; i++) {
             void *buf = ps_dma_alloc(&io_ops.dma_manager, BUF_SIZE, 4, 1, PS_MEM_NORMAL);
             assert(buf);
@@ -507,6 +518,20 @@ void post_init(void)
 
     error = ethif_init(&eth_driver, &io_ops, &irq_ops);
     ZF_LOGF_IF(error, "Failed to initialise the ethernet device");
+
+    uint8_t hw_mac[6];
+    eth_driver.i_fn.get_mac(&eth_driver, hw_mac);
+
+    int num_defaults = 0;
+    for (int client = 0; client < num_clients; client++) {
+        if (client_has_mac(clients[client].client_id)) {
+            client_get_mac(clients[client].client_id, clients[client].mac);
+        } else {
+            ++num_defaults;
+            memcpy(clients[client].mac, hw_mac, 6);
+            ZF_LOGF_IF((num_defaults > 1), "Should not have 2 clients with the same MAC address");
+        }
+    }
 
     done_init = 1;
 

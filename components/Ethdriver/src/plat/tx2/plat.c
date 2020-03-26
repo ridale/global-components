@@ -14,7 +14,7 @@
 #include <camkes/io.h>
 #include <camkes/dma.h>
 #include <ethdrivers/raw.h>
-#include <ethdrivers/zynq7000.h>
+#include <ethdrivers/tx2.h>
 #include <platsupport/io.h>
 #include <platsupport/clock.h>
 #include <platsupport/irq.h>
@@ -30,14 +30,7 @@ static ps_irq_t irq_info;
 int ethif_preinit(vka_t *vka, simple_t *camkes_simple, vspace_t *vspace,
                   ps_io_ops_t *io_ops)
 {
-    int ret = camkes_io_ops(io_ops);
-    if (ret) {
-        return ret;
-    }
-    // This may reinitialise the clocks, timeserver might not like this,
-    // but zynq7000/uboot/zynq_gem.c requires access to the SLCR registers
-    // to configure some clocks related to the Ethernet device.
-    return clock_sys_init(io_ops, &io_ops->clock_sys);
+    return camkes_io_ops(io_ops);
 }
 
 int ethif_init(struct eth_driver *eth_driver, ps_io_ops_t *io_ops, ps_irq_ops_t *irq_ops)
@@ -47,16 +40,21 @@ int ethif_init(struct eth_driver *eth_driver, ps_io_ops_t *io_ops, ps_irq_ops_t 
         .prom_mode = (uint8_t) promiscuous_mode
     };
 
-    int error = ethif_zynq7000_init(eth_driver, *io_ops, (void *) &eth_config);
+    int error = ethif_tx2_init(eth_driver, *io_ops, (void *) &eth_config);
     if (error) {
         return error;
     }
 
     irq_info = (ps_irq_t) {
-        .type = PS_INTERRUPT, .irq = { .number = ZYNQ7000_INTERRUPT_ETH0 }
+        .type = PS_INTERRUPT, .irq = { .number = TX2_INT_COMMON_ETHER_QOS }
     };
     irq_id_t irq_id = ps_irq_register(irq_ops, irq_info, eth_irq_handle, &irq_info);
     if (irq_id < 0) {
+        return -1;
+    }
+    ps_irq_t irq_info1 = { .type = PS_INTERRUPT, .irq = { .number = TX2_INT_RX0_ETHER_QOS }};
+    irq_id_t irq_id1 = ps_irq_register(irq_ops, irq_info1, eth_irq_handle, &irq_info1);
+    if (irq_id1 < 0) {
         return -1;
     }
 

@@ -10,15 +10,19 @@
  *#@TAG(DATA61_BSD)
   #*/
 
-/*- set is_reader = True -*/
-/*- set instance = me.instance.name -*/
-/*- set interface = me.interface.name -*/
-/*- include 'global-endpoint.template.c' -*/
+/*- from 'global-endpoint.template.c' import allocate_cap with context -*/
+
+/*- do allocate_cap(me, is_reader=True) -*/
 /*- set notification = pop('notification') -*/
+/*- set badge = pop('badge') -*/
 
 /*# This is only used for seL4GlobalAsynchCallback #*/
 /*- do stash('callback_notification', notification) -*/
 
 seL4_CPtr /*? me.interface.name ?*/_notification(void) {
     return /*? notification ?*/;
+}
+
+seL4_Word /*? me.interface.name ?*/_notification_badge(void) {
+    return /*? badge ?*/;
 }

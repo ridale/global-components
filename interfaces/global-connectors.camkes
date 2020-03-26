@@ -59,23 +59,7 @@
 connector seL4RPCCallSignal {
     from Procedures;
     to Procedure;
-}
-
-/**
- * RPCCallDataport connector
- *
- * This connector is like the regular RPCCall connector, except that
- * it transparanty allocates and uses a shared dataport between sender
- * and receiver, rather than the IPC buffer.
- *
- * It requires an attribute to define a badge for it to use and to couple
- * the RPC connector and the associated dataport. The badge can be any
- * unique number.
- * 	<from_component>.<from_interface>_attributes = "<badge>";
- */
-connector seL4RPCCallDataport {
-    from Procedures;
-    to Procedure;
+    attribute bool from_global_endpoint = True;
 }
 
 /**
@@ -140,6 +124,25 @@ connector seL4RPCDataport {
 connector seL4RPCDataportSignal {
     from Procedures;
     to Procedure;
+    attribute bool from_global_endpoint = True;
+}
+
+/**
+ * seL4RPCOverMultiSharedData connector
+ *
+ * This connector is similar to seL4RPCCall but will use shared memory instead of
+ * the IPC buffer to transfer data between components. It supports multiple clients
+ * communicating with a single server. Each client has a separate shared memory region
+ * with the server. The size of the shared memory region can be configured on a
+ * per-client basis via setting ${client_instance}.${interface_name}_shmem_size.
+ * The default shared memory size is 4096 bytes.
+ * For a multi-threaded caller, subsequent calls to the interface will block until
+ * the first call returns in order to preserve the integrity of the shared buffer.
+ *
+ */
+connector seL4RPCOverMultiSharedData {
+    from Procedures with 0 threads;
+    to Procedure;
 }
 
 /**
@@ -166,6 +169,7 @@ connector seL4RPCDataportSignal {
 connector seL4GlobalAsynch {
     from Event with 0 threads;
     to Events with 0 threads;
+    attribute bool to_global_endpoint = True;
 
     attribute string isabelle_connector_spec = "\<lparr>
         connector_type = NativeConnector,
@@ -204,6 +208,7 @@ connector seL4GlobalAsynch {
 connector seL4GlobalAsynchCallback {
     from Event;
     to Events;
+    attribute bool to_global_endpoint = True;
 
     attribute string isabelle_connector_spec = "\<lparr>
         connector_type = NativeConnector,
@@ -222,6 +227,7 @@ connector seL4GlobalAsynchCallback {
 connector seL4TimeServer {
     from Procedures with 0 threads;
     to Procedure;
+    attribute bool from_global_endpoint = True;
 
     /* TODO: double check this */
     attribute string isabelle_connector_spec = "\<lparr>
@@ -240,6 +246,7 @@ connector seL4TimeServer {
 connector seL4SerialServer {
     from Procedures with 0 threads;
     to Procedure;
+    attribute bool from_global_endpoint = True;
 
     /* TODO: double check this */
     attribute string isabelle_connector_spec = "\<lparr>
@@ -260,6 +267,7 @@ connector seL4SerialServer {
 connector seL4PicoServerSignal {
     from Procedures with 0 threads;
     to Procedure;
+    attribute bool from_global_endpoint = True;
 }
 
 connector seL4PicoServer {
@@ -279,6 +287,12 @@ connector seL4PicoServer {
 connector seL4Ethdriver {
     from Procedures with 0 threads;
     to Procedure;
+    attribute bool from_global_endpoint = True;
+}
+
+connector seL4SharedDataWithCaps {
+    from Dataport;
+    to Dataport;
 }
 
 /**
@@ -294,9 +308,11 @@ connector seL4Ethdriver {
 * is intended to be an empty/stub component.
 */
 connector seL4VirtQueues {
-    from Procedures;
-    to Procedure;
+    from Procedures with 0 threads;
+    to Procedure with 0 threads;
     attribute bool disable_interface_type_checking = true;
+    attribute bool from_global_endpoint = True;
+    attribute bool to_global_endpoint = True;
 
     attribute string isabelle_connector_spec = "\<lparr>
         connector_type = NativeConnector,

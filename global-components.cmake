@@ -34,7 +34,6 @@ foreach(
     IN
     ITEMS
     seL4RPCCallSignal
-    seL4RPCCallDataport
     seL4RPCDataport
     seL4RPCDataportSignal
     seL4GlobalAsynch
@@ -42,6 +41,7 @@ foreach(
     seL4Ethdriver
     seL4VirtQueues
     seL4MessageQueue
+    seL4RPCOverMultiSharedData
 )
     DeclareCAmkESConnector(
         ${connector}
@@ -51,6 +51,13 @@ foreach(
         ${connector}-to.template.c
     )
 endforeach()
+DeclareCAmkESConnector(
+    seL4SharedDataWithCaps
+    FROM
+    seL4SharedDataWithCaps.template.c
+    TO
+    seL4SharedDataWithCaps.template.c
+)
 DeclareCAmkESConnector(
     seL4TimeServer
     FROM

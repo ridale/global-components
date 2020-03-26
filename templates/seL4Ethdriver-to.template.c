@@ -10,32 +10,29 @@
  * @TAG(DATA61_BSD)
  */
 
+#include <stdbool.h>
+
 /*- include 'seL4RPCDataport-to.template.c' -*/
 
-/*# Look through the composition and find all '-to' connectors that would be
- *# duplicates of this one
- #*/
-/*- set badges = [] -*/
+/*# Assign client ids and badges #*/
+/*- from 'rpc-connector.c' import allocate_badges with context -*/
+/*- from 'global-endpoint.template.c' import allocate_cap with context -*/
+/*- set client_ids = namespace() -*/
+/*- do allocate_badges(client_ids) -*/
+/*- set badges = client_ids.badges -*/
+
 /*- set macs = [] -*/
 
 /*- for c in me.parent.from_ends -*/
-    /*- set is_reader = False -*/
-    /*- set instance = c.instance.name -*/
-    /*- set interface = c.interface.name -*/
-    /*- include 'global-endpoint.template.c' -*/
+    /*- do allocate_cap(c, is_reader=False) -*/
     /*- set notification = pop('notification') -*/
-    /*- set badge = configuration[c.instance.name].get("%s_attributes" % c.interface.name).strip('"') -*/
+    /*- set badge = badges[loop.index0] -*/
     /*- set mac = configuration[c.instance.name].get("%s_mac" % c.interface.name) -*/
     void /*? me.interface.name ?*/_emit_/*? badge ?*/(void) {
         seL4_Signal(/*? notification ?*/);
     }
-    /*- do badges.append(int(badge)) -*/
     /*- do macs.append( (badge, mac) ) -*/
 /*- endfor -*/
-
-
-
-/*- do badges.sort() -*/
 
 void /*? me.interface.name ?*/_emit(unsigned int badge) {
     /*# create a lookup table under the assumption that the
@@ -50,10 +47,30 @@ void /*? me.interface.name ?*/_emit(unsigned int badge) {
     lookup[badge]();
 }
 
+bool /*? me.interface.name ?*/_has_mac(unsigned int badge) {
+    /*- if len(macs) > 0 -*/
+        switch (badge) {
+            /*- for badge,mac in macs -*/
+            case /*? badge ?*/: {
+                /*- if mac != None -*/
+                    return true;
+                /*- else -*/
+                    return false;
+                /*- endif -*/
+            }
+            /*- endfor -*/
+        }
+    /*- endif -*/
+    assert(0);
+}
+
 void /*? me.interface.name ?*/_get_mac(unsigned int badge, uint8_t *mac) {
     /*- if len(macs) > 0 -*/
         switch (badge) {
             /*- for badge,mac in macs -*/
+                /*- if mac == None -*/
+                    /*- continue -*/
+                /*- endif -*/
             case /*? badge ?*/: {
                 uint8_t temp[] = {
                     /*- for num in mac -*/
@@ -64,6 +81,8 @@ void /*? me.interface.name ?*/_get_mac(unsigned int badge, uint8_t *mac) {
                 break;
             }
             /*- endfor -*/
+            default:
+                break;
         }
     /*- endif -*/
 }

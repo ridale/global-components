@@ -14,12 +14,11 @@
 
 /*? macros.show_includes(me.instance.type.includes) ?*/
 
-
-/*- set client_id = configuration[me.instance.name].get("%s_attributes" % me.interface.name) -*/
-/*- if client_id is none or re.match('\\d+$', client_id) is none -*/
-  /*? raise(Exception('%s.%s_attributes must be set to a number' % (me.instance.name, me.interface.name))) ?*/
-/*- endif -*/
-/*- set client_id = client_id.strip('"') -*/
+/*# Assign client ids and badges #*/
+/*- from 'rpc-connector.c' import allocate_badges with context -*/
+/*- set client_ids = namespace() -*/
+/*- do allocate_badges(client_ids) -*/
+/*- set client_id = client_ids.badges[me.parent.from_ends.index(me)] -*/
 
 /*- if suffix is not defined -*/
   /*- set suffix = '' -*/
@@ -33,16 +32,8 @@
 /*- if page_size == 0 -*/
   /*? raise(TemplateError('Setting %s.%s_shmem_size does not meet minimum size and alignment requirements. %d must be at least %d and %d aligned' % (me.instance.name, me.interface.name, size, 4096, 4096))) ?*/
 /*- endif -*/
-/*- set page_size_bits = int(math.log(page_size, 2)) -*/
 
-struct {
-    char content[ROUND_UP_UNSAFE(/*? shmem_size ?*/, SIZE_BITS_TO_BYTES(/*? page_size_bits ?*/))];
-} /*? shmem_symbol ?*/
-        ALIGN(/*? page_size ?*/)
-        SECTION("align_/*? page_size_bits ?*/bit")
-        __attribute__((externally_visible))
-        USED;
-
+/*? macros.shared_buffer_symbol(sym=shmem_symbol, shmem_size=shmem_size, page_size=page_size) ?*/
 /*? register_shared_variable('%s_%s_data' % (me.parent.name, client_id), shmem_symbol, shmem_size, frame_size=page_size) ?*/
 
 volatile void * /*? shmem_name ?*/ = (volatile void *) & /*? shmem_symbol ?*/;
