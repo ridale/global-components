@@ -21,6 +21,7 @@
 #include <camkes/sync.h>
 
 #include <usb/otg.h>
+#include <usb/drivers/otgusbtty.h>
 
 #include <platsupport/io.h>
 #include <platsupport/irq.h>
@@ -68,6 +69,8 @@ static void otg_irq_handle(void *data, ps_irq_acknowledge_fn_t acknowledge_fn, v
     error = otgdriver_lock();
     ZF_LOGF_IF(error, "Failed to release lock for Otgdriver");
 }
+
+static  otg_usbtty_t usbtty = {0};
 
 void post_init(void)
 {
