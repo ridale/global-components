@@ -71,6 +71,7 @@ static void otg_irq_handle(void *data, ps_irq_acknowledge_fn_t acknowledge_fn, v
 
 void post_init(void)
 {
+    ZF_LOGD("post_init");
     int error = 0;
     error = otgdriver_lock();
     ZF_LOGF_IF(error, "Failed to obtain lock for Otgdriver");
@@ -90,7 +91,7 @@ void post_init(void)
     error = camkes_irq_ops(&irq_ops);
     ZF_LOGF_IF(error, "Failed to initialise IRQ ops");
 
-    const int* irqs = usb_otg_irqs(otg, &nirqs);
+    const int* irqs = usb_otg_irqs(USB_OTG_DEFAULT, &nirqs);
     ZF_LOGF_IF((NULL == irqs), "Failed to initialise IRQ ops");
     ZF_LOGF_IF((0 == nirqs), "No IRQs mapped");
 
@@ -107,6 +108,8 @@ void post_init(void)
             ZF_LOGW("registered irq %d", irq_info[i].irq.number);
         }
     }
+
+    otg_usbtty_init(otg, &io_ops.dma_manager, &usbtty);
 
     error = otgdriver_unlock();
     ZF_LOGF_IF(error, "Failed to release lock for Otgdriver");
