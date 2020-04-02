@@ -37,6 +37,7 @@ static ps_mutex_ops_t msync = {0};
 static ps_io_ops_t io_ops = {0};
 
 #define MAX_USB_HOST_IRQS  10
+#define USB_TICK_MS 5000
 
 static ps_irq_t irq_info[MAX_USB_HOST_IRQS];
 static ps_irq_ops_t irq_ops;
@@ -46,6 +47,19 @@ static int nirqs = 0;
 void pre_init(void)
 {
     ZF_LOGD("pre_init");
+    timer_periodic(0, NS_IN_MS * USB_TICK_MS);
+}
+
+/* Callback that gets called when the timer fires. */
+void timer_complete_callback(void)
+{
+    int error = 0;
+    error = usbdriver_lock();
+    ZF_LOGF_IF(error, "Failed to obtain lock for Usbdriver");
+    // check stuff, should be used to bind devices or something.
+    usb_lsusb(&host, 1); // example of the or something
+    error = usbdriver_unlock();
+    ZF_LOGF_IF(error, "Failed to release lock for Usbdriver");
 }
 
 static void usb_irq_handle(void *data, ps_irq_acknowledge_fn_t acknowledge_fn, void *ack_data)

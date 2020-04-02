@@ -20,8 +20,9 @@ HARDWARE_USB_COMPONENT
 component UsbdriverARMPlat {
     has mutex usbdriver;
 
-    //DEBUG LINE BELOW REMOVE 
-    //control;
+    /* Used for USB fun times */
+    uses Timer timer;
+    consumes Notification timer_complete;
 
     HARDWARE_USB_INTERFACES
 
