@@ -70,7 +70,7 @@ static void otg_irq_handle(void *data, ps_irq_acknowledge_fn_t acknowledge_fn, v
     ZF_LOGF_IF(error, "Failed to release lock for Otgdriver");
 }
 
-static  otg_usbtty_t usbtty = {0};
+static  otg_usbtty_t usbtty = NULL;
 
 void post_init(void)
 {
@@ -85,10 +85,7 @@ void post_init(void)
     error = camkes_io_ops(&io_ops);
     ZF_LOGF_IF(error, "Failed to initialise IO ops");
 
-    error = usb_otg_init(USB_OTG_DEFAULT, &otg, io_ops);
-    ZF_LOGF_IF(error, "Failed to initialise USB host");
-
-    error = otg_postinit(USB_OTG_DEFAULT, &io_ops);
+    error = otg_postinit(USB_OTG_DEFAULT, &io_ops); // iomux setup
     ZF_LOGF_IF(error, "Failed to initialise IO mux");
 
     error = camkes_irq_ops(&irq_ops);
@@ -105,14 +102,19 @@ void post_init(void)
         };
         irq_id_t irq_id = ps_irq_register(&irq_ops, irq_info[i], otg_irq_handle, &irq_info[i]);
         if (irq_id < 0) {
-            ZF_LOGF_IF(error, "Failed to initialise OTG interrupt");
+            ZF_LOGF("Failed to initialise OTG interrupt");
             break;
         } else {
             ZF_LOGW("registered irq %d", irq_info[i].irq.number);
         }
     }
 
-    otg_usbtty_init(otg, &io_ops.dma_manager, &usbtty);
+    error = usb_otg_init(USB_OTG_DEFAULT, &otg, io_ops);
+    ZF_LOGF_IF(error, "Failed to initialise USB host");
+
+    error = otg_usbtty_init(otg, &io_ops.dma_manager, &usbtty);
+    ZF_LOGF_IF(error, "Failed to initialise tty ep");
+
 
     error = otgdriver_unlock();
     ZF_LOGF_IF(error, "Failed to release lock for Otgdriver");
