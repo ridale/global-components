@@ -66,7 +66,7 @@ static void otg_irq_handle(void *data, ps_irq_acknowledge_fn_t acknowledge_fn, v
     error = acknowledge_fn(irq);
     ZF_LOGF_IF(error, "Failed to acknowledge IRQ");
 
-    error = otgdriver_lock();
+    error = otgdriver_unlock();
     ZF_LOGF_IF(error, "Failed to release lock for Otgdriver");
 }
 
