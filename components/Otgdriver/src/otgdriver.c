@@ -70,12 +70,58 @@ static void otg_irq_handle(void *data, ps_irq_acknowledge_fn_t acknowledge_fn, v
     ZF_LOGF_IF(error, "Failed to release lock for Otgdriver");
 }
 
+// static void *malloc_dma_alloc(void *cookie, size_t size, int align, int cached, ps_mem_flags_t flags)
+// {
+//     assert(cached == 0);
+//     assert(cookie == NULL);
+//     int error;
+//     void *ret = malloc(size);
+//     if (ret == NULL) {
+//         ZF_LOGE("ERR: Failed to allocate %d\n", size);
+//         return NULL;
+//     }
+//     return ret;
+// }
+
+// static void malloc_dma_free(void *cookie, void *addr, size_t size)
+// {
+//     assert(cookie == NULL);
+//     free(addr);
+// }
+
+// static uintptr_t malloc_dma_pin(void *cookie, void *addr, size_t size)
+// {
+//     assert(cookie == NULL);
+//     return (uintptr_t)addr;
+// }
+
+// static void malloc_dma_unpin(void *cookie, void *addr, size_t size)
+// {
+//     assert(cookie == NULL);
+// }
+
+// static void malloc_dma_cache_op(void *cookie, void *addr, size_t size, dma_cache_op_t op)
+// {
+//     assert(cookie == NULL);
+// }
+
+
 static  otg_usbtty_t usbtty = NULL;
 
 void post_init(void)
 {
     ZF_LOGD("post_init");
     int error = 0;
+    // static ps_dma_man_t tty_dma = {
+    //     .cookie = NULL,
+    //     .dma_alloc_fn = malloc_dma_alloc,
+    //     .dma_free_fn = malloc_dma_free,
+    //     .dma_pin_fn = malloc_dma_pin,
+    //     .dma_unpin_fn = malloc_dma_unpin,
+    //     .dma_cache_op_fn = malloc_dma_cache_op
+
+    // };
+
     error = otgdriver_lock();
     ZF_LOGF_IF(error, "Failed to obtain lock for Otgdriver");
 
@@ -115,7 +161,8 @@ void post_init(void)
     error = otg_usbtty_init(otg, &io_ops.dma_manager, &usbtty);
     ZF_LOGF_IF(error, "Failed to initialise tty ep");
 
-
     error = otgdriver_unlock();
     ZF_LOGF_IF(error, "Failed to release lock for Otgdriver");
+
+    ZF_LOGD("finished post_init");
 }
