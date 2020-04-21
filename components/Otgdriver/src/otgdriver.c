@@ -155,7 +155,7 @@ void post_init(void)
         }
     }
 
-    error = usb_otg_init(USB_OTG_DEFAULT, &otg, io_ops);
+    error = usb_otg_init(USB_OTG_DEFAULT, &otg, &io_ops);
     ZF_LOGF_IF(error, "Failed to initialise USB host");
 
     error = otg_usbtty_init(otg, &io_ops.dma_manager, &usbtty);
