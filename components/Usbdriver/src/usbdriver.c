@@ -19,6 +19,7 @@
 #include <camkes/sync.h>
 
 #include <usb/usb.h>
+#include <usb/drivers/pl2303.h>
 
 #include <platsupport/io.h>
 #include <platsupport/irq.h>
@@ -43,6 +44,7 @@ static ps_irq_t irq_info[MAX_USB_HOST_IRQS];
 static ps_irq_ops_t irq_ops;
 static int nirqs = 0;
 
+static usb_dev_t* device = NULL;
 
 void pre_init(void)
 {
@@ -50,6 +52,7 @@ void pre_init(void)
     timer_periodic(0, NS_IN_MS * USB_TICK_MS);
 }
 
+static char buffer[] = "hello pl2303\n";
 /* Callback that gets called when the timer fires. */
 void timer_complete_callback(void)
 {
@@ -57,7 +60,19 @@ void timer_complete_callback(void)
     error = usbdriver_lock();
     ZF_LOGF_IF(error, "Failed to obtain lock for Usbdriver");
     // check stuff, should be used to bind devices or something.
-    usb_lsusb(&host, 1); // example of the or something
+    if (NULL == device) {
+        usb_lsusb(&host, 1); // example of the or something
+        device = usb_get_device(&host, 0x03);
+        if (device != NULL) {
+            error = usb_pl2303_bind(device);
+            ZF_LOGF_IF(error, "Failed to bind pl2303 driver");
+            error = usb_pl2303_configure(device, 115200, 8, PARITY_NONE, 1);
+            ZF_LOGF_IF(error, "Failed to configure pl2303 driver");
+        }
+    }
+    else {
+        usb_pl2303_write(device, buffer, sizeof(buffer));
+    }
     error = usbdriver_unlock();
     ZF_LOGF_IF(error, "Failed to release lock for Usbdriver");
 }
